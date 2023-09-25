@@ -1,6 +1,8 @@
 # Ответы на вопросы к экзамену по Компьютерным системам
 
-### 1. Architektúra počítačov PC ([21 страница](chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/http://matlab.fei.tuke.sk/psvr/subory/literatura/snorek.pdf))
+### 1. Architektúra počítačov PC 
+
+[21 страница](http://matlab.fei.tuke.sk/psvr/subory/literatura/snorek.pdf)
 
 Архитэктура персональных компьютеров (PC) основана на фон-неймановской модели, которая определяет основные компоненты компьютера:
 
