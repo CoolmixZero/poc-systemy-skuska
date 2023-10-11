@@ -67,17 +67,17 @@ bool rs232_write(
   uint32_t buffer_size
 );
 
+// Functions for controlling RTS (Request To Send) signal.
 bool rs232_set_rts(
-  struct rs232_obj* port, 
-  bool set
+  struct rs232_obj* port,   // Pointer to the serial port object.
+  bool set                  // Set or clear the RTS signal.
 );
 
 bool rs232_get_rts(
-  struct rs232_obj* port, 
-  bool* set
+  struct rs232_obj* port,   // Pointer to the serial port object.
+  bool* set                 // Pointer to store the RTS status.
 );
 
 bool rs232_wait_for_rts(
-  struct rs232_obj* port
+  struct rs232_obj* port    // Pointer to the serial port object.
 );
-

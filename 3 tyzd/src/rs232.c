@@ -1,9 +1,9 @@
 #include "rs232.h"
 
 bool rs232_open(
-  struct rs232_obj* port, 
-  uint8_t port_number,
-  uint32_t baudrate
+  struct rs232_obj* port,       // Pointer to the serial port object.
+  uint8_t port_number,          // Port number (e.g., COM1, COM2, etc.).
+  uint32_t baudrate            // Desired baud rate.
 ) {
   if (!port)
     return false;
@@ -54,7 +54,7 @@ bool rs232_open(
   COMMTIMEOUTS timeouts = {
     .ReadIntervalTimeout = 0,
     .ReadTotalTimeoutMultiplier = 1,
-    .ReadTotalTimeoutConstant = 4000,
+    .ReadTotalTimeoutConstant = 10,
     .WriteTotalTimeoutMultiplier = 1,
     .WriteTotalTimeoutConstant = 1
   };
@@ -119,7 +119,7 @@ bool rs232_write(
 
   // write data
   DWORD bytes;
-  if (!WritFile(
+  if (!WriteFile(
     port->port,
     buffer,
     buffer_size,
@@ -136,13 +136,50 @@ bool rs232_write(
 bool rs232_set_rts(
   struct rs232_obj* port, 
   bool set
-);
+) {
+  // validate
+  if (!port || !set || port->port == INVALID_HANDLE_VALUE) 
+    return false;
+
+  return EscapeCommFunction(port->port, set ? SETRTS : CLRRTS);
+}
 
 bool rs232_get_rts(
   struct rs232_obj* port, 
   bool* set
-);
+) {
+  // validate
+  if (!port || !set || port->port == INVALID_HANDLE_VALUE) 
+    return false;
+
+  DWORD status;
+  if (!GetCommModemStatus(port->port, &status))
+    return false;
+
+  *set = !!(status & MS_CTS_ON); // (...) != 0
+
+  return true;
+}
 
 bool rs232_wait_for_rts(
   struct rs232_obj* port
-);
+) {
+  // validate
+  if (!port || port->port == INVALID_HANDLE_VALUE) 
+    return false;
+
+  // set mask
+  DWORD mask;
+  if (!GetCommMask(port->port, &mask))
+    return false;
+
+  mask |= EV_CTS;
+  if (!SetCommMask(port->port, mask))
+    return false;
+
+  // wait
+  mask = 0;
+  while(WaitCommEvent(port->port, &mask, NULL) && !!(mask & EV_CTS));
+
+  return !!(mask & EV_CTS);
+}
