@@ -2,7 +2,7 @@
 #include "rs232.h"
 #include <string.h>
 
-int main(int argc, char const *argv[])
+int main()
 {
     // select serial port
     int port_no;
@@ -32,7 +32,7 @@ int main(int argc, char const *argv[])
     // read data
     char buffer[256];
     uint32_t bytes;
-    if(!rs232_read(&port, buffer, sizeof(buffer), &bytes)) {
+    if(!rs232_read(&port, (uint8_t*)buffer, sizeof(buffer), &bytes)) {
         fprintf(stderr, "Failed to read data from serial port!\n");
     }
 
@@ -44,3 +44,32 @@ int main(int argc, char const *argv[])
 
     return 0;
 }
+
+
+// int main()
+// {
+//     struct rs232_obj port = { 0 };
+//     if (!rs232_open(&port, 3, 115200))
+//     {
+//         printf("rs232_open failed\n");
+//         return 1;
+//     }
+
+//     uint8_t buffer[256] = { 0 };
+//     uint32_t count = 0;
+//     if (!rs232_read(&port, buffer, sizeof(buffer), &count))
+//     {
+//         printf("rs232_read failed\n");
+//         return 1;
+//     }
+
+//     printf("read %d bytes\n", count);
+
+//     if (!rs232_close(&port))
+//     {
+//         printf("rs232_close failed\n");
+//         return 1;
+//     }
+    
+//     return 0;
+// }

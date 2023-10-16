@@ -1,134 +1,111 @@
 #include "rs232.h"
+#include <stdio.h>
 
-bool rs232_open(
-  struct rs232_obj* port, 
-  uint8_t port_number,
-  uint32_t baudrate
-) {
-  if (!port)
-    return false;
 
-  // save communication parameters
-  port->baudrate = baudrate;
-  snprintf(port->port_name, sizeof(port->port_name), "\\\\.\\COM%d", (int)port_number);
+bool rs232_open(struct rs232_obj *port, uint8_t portNumber, uint32_t baudRate)
+{
+    if (!port)
+        return false;
 
-  port->port = INVALID_HANDLE_VALUE;
+    port->baudRate = baudRate;
+    snprintf(port->portName, sizeof(port->portName), "\\\\.\\COM%d", (int)portNumber);
+    port->handle = INVALID_HANDLE_VALUE;
 
-  // open serial port
-  HANDLE handle = CreateFileA(
-    port->port_name,
-    GENERIC_READ | GENERIC_WRITE,
-    0,
-    NULL,
-    OPEN_EXISTING,
-    FILE_ATTRIBUTE_NORMAL,
-    NULL
-  );
+    HANDLE handle = CreateFileA(
+        port->portName,
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL
+    );
 
-  if (handle == INVALID_HANDLE_VALUE) {
-    return false;
-  }
-  
-  // load serial port parameters
-  DCB dcb;
-  SecureZeroMemory(&dcb, sizeof(DCB));
-  dcb.DCBlength = sizeof(DCB);
+    if (handle == INVALID_HANDLE_VALUE)
+        return false;
+    
+    // set rs-232 params
+    DCB params = { 0 };
+    // SecureZeroMemory(&params, sizeof(DCB));
+    params.DCBlength = sizeof(DCB);
 
-  if (!GetCommState(handle, &dcb)) {
-    CloseHandle(handle);
-    return false;
-  }
+    if (!GetCommState(handle, &params))
+    {
+        CloseHandle(handle);
+        return false;
+    }
+    
+    params.BaudRate = port->baudRate;
+    params.ByteSize = 8;
+    params.StopBits = ONESTOPBIT;
+    params.Parity = NOPARITY;
+    params.fDtrControl = DTR_CONTROL_ENABLE;
+    params.fRtsControl = RTS_CONTROL_ENABLE;
 
-  // set serial port params
-  dcb.BaudRate = (DWORD)baudrate;
-  dcb.Parity = NOPARITY;
-  dcb.ByteSize = 8;
-  dcb.StopBits = ONESTOPBIT;
+    if (!SetCommState(handle, &params))
+    {
+        CloseHandle(handle);
+        return false;
+    }
 
-  if (!SetCommState(handle, &dcb)) {
-    CloseHandle(handle);
-    return false;
-  }
+    // set timeouts
+    COMMTIMEOUTS timeouts = { 0 };
+    timeouts.ReadIntervalTimeout = 0;
+    timeouts.ReadTotalTimeoutConstant = 1;
+    timeouts.ReadTotalTimeoutMultiplier = 1;
+    timeouts.WriteTotalTimeoutConstant = 1;
+    timeouts.WriteTotalTimeoutMultiplier = 1;
 
-  // set timeoutss
-  COMMTIMEOUTS timeouts = {
-    .ReadIntervalTimeout = 0,
-    .ReadTotalTimeoutMultiplier = 1,
-    .ReadTotalTimeoutConstant = 1,
-    .WriteTotalTimeoutMultiplier = 1,
-    .WriteTotalTimeoutConstant = 1
-  };
+    if (!SetCommTimeouts(handle, &timeouts))
+    {
+        CloseHandle(handle);
+        return false;
+    }
+    
+    port->handle = handle;
+    return true;
+}
 
-  if (!SetCommTimeouts(handle, &timeouts)) {
-    CloseHandle(handle);
-    return false;
-  }
+bool rs232_close(struct rs232_obj *port)
+{
+    if (!port)
+        return false;
 
-  // success
-  port->port = handle;
-  return true;
+    if (port->handle == INVALID_HANDLE_VALUE)
+        return false;
 
-};
+    CloseHandle(port->handle);
+    port->handle = INVALID_HANDLE_VALUE;
+    return true;
+}
 
-bool rs232_close(struct rs232_obj* port) {
-  // validate params
-  if (!port || port->port == INVALID_HANDLE_VALUE) 
-    return false;
+bool rs232_write(struct rs232_obj *port, uint8_t *buffer, uint32_t bufferLength)
+{
+    if (!port)
+        return false;
 
-  // close serial port
-  CloseHandle(port->port);
-  port->port = INVALID_HANDLE_VALUE;
-  return true;
-};
+    if (port->handle == INVALID_HANDLE_VALUE)
+        return false;
 
-bool rs232_read(
-  struct rs232_obj* port, 
-  uint8_t* buffer,
-  uint32_t buffer_size,
-  uint32_t* bytes_read
-) {
-  // validate params
-  if (!port || port->port == INVALID_HANDLE_VALUE) 
-    return false;
+    DWORD bytesWritten = 0;
+    if (!WriteFile(port->handle, buffer, bufferLength, &bytesWritten, NULL))
+        return false;
 
-  // read data
-  DWORD bytes;
-  if (!ReadFile(
-    port->port,
-    buffer,
-    buffer_size,
-    &bytes,
-    NULL
-  )) {
-    return false;
-  }
+    return true;
+}
 
-  // success
-  *bytes_read = (uint32_t)bytes;
-  return true;
-};
+bool rs232_read(struct rs232_obj *port, uint8_t *buffer, uint32_t bufferLength, uint32_t *count)
+{
+    if (!port)
+        return false;
 
-bool rs232_write(
-  struct rs232_obj* port, 
-  uint8_t* buffer,
-  uint32_t buffer_size
-) {
-  // validate params
-  if (!port || port->port == INVALID_HANDLE_VALUE) 
-    return false;
+    if (port->handle == INVALID_HANDLE_VALUE)
+        return false;
 
-  // write data
-  DWORD bytes;
-  if (!WritFile(
-    port->port,
-    buffer,
-    buffer_size,
-    &bytes,
-    NULL
-  )) {
-    return false;
-  }
+    DWORD bytesRead = 0;
+    if (!ReadFile(port->handle, buffer, bufferLength, &bytesRead, NULL))
+        return false;
 
-  // success 
-  return bytes == buffer_size;
-};
+    *count = bytesRead;
+    return true;
+}

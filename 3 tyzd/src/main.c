@@ -54,7 +54,7 @@ int main()
 
 void master_main(struct rs232_obj* port){
     // validate 
-    if (!port || port->port == INVALID_HANDLE_VALUE) 
+    if (!port || port->portName == INVALID_HANDLE_VALUE) 
         return;
 
     // wait for CTS
@@ -82,7 +82,7 @@ void master_main(struct rs232_obj* port){
 
 void slave_main(struct rs232_obj* port) {
     // validate 
-    if (!port || port->port == INVALID_HANDLE_VALUE) 
+    if (!port || port->portName == INVALID_HANDLE_VALUE) 
         return;
     
     // set RTS signal
